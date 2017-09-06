@@ -1,13 +1,20 @@
 package me.xiao.javalearn.ch04;
 
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static me.xiao.javalearn.ch04.DishFactory.menu;
 
 /**
  * anyMatch
@@ -31,7 +38,7 @@ public class StreamingStuff {
 
         List<Integer[]> flatter = numbers1.stream().flatMap(i -> numbers2.stream().map(j -> new Integer[]{i, j})).collect(toList());
 
-        flatter.stream().forEach(i -> System.out.println(Arrays.toString(i)));
+        flatter.forEach(i -> System.out.println(Arrays.toString(i)));
     }
 
     private void optional() {
@@ -54,16 +61,41 @@ public class StreamingStuff {
 //        numbers.stream().count();
     }
 
-    private void digitStream() {
+    private void digitStream() throws Throwable {
         IntStream intStream = menu.stream().mapToInt(Dish::getCalories);
         OptionalInt max = intStream.max();
-        System.out.println(max.getAsInt());
+        System.out.println(max.orElseThrow(() -> new RuntimeException("err")));
 
         Stream<Integer> boxed = menu.stream().mapToInt(Dish::getCalories).boxed();
 //        boxed.forEach(System.out::println);
 
 
         System.out.println(IntStream.rangeClosed(0, 100).filter(d -> d % 2 == 0).count());
+    }
+
+    private void createStream() throws IOException {
+        Stream<Integer> stream1 = Stream.of(1, 3, 4);
+        Stream<Integer> stream2 = Stream.empty();
+        Stream<Integer> stream3 = Arrays.stream(new Integer[]{3, 4, 5});
+        Stream<String> stream4 = Files.lines(Paths.get("data.txt"), Charset.defaultCharset());
+        Stream<Integer> stream5 = Stream.iterate(0, n -> n + 2).limit(10);
+        Stream<int[]> stream6 = Stream.iterate(new int[]{0, 1}, t -> new int[]{t[1], t[0] + t[1]});
+        Stream<Double> stream7 = Stream.generate(Math::random);
+
+//        !!! 内部状态会改变的流，不能用于并发 !!!
+        IntSupplier fib = new IntSupplier() {
+            private int previous = 0;
+            private int current = 1;
+
+            @Override
+            public int getAsInt() {
+                int oldPrevious = previous;
+                int nextValue = previous + current;
+                previous = current;
+                current = nextValue;
+                return oldPrevious;
+            }
+        };
     }
 
     private void sharedNum() {
@@ -77,31 +109,22 @@ public class StreamingStuff {
         IntStream.rangeClosed(1, 100).boxed()
                 .flatMap(a ->
                         IntStream.rangeClosed(a, 100)
-                                .mapToObj(b -> new int[]{a, b, (int) Math.sqrt(a * a + b * b)})
+                                .mapToObj(b -> new double[]{a, b, Math.sqrt(a * a + b * b)})
                                 .filter(t -> t[2] % 1 == 0)
                 )
                 .limit(100)
                 .forEach(d -> System.out.println(Arrays.toString(d)));
     }
 
-    List<Dish> menu = Arrays.asList(
-            new Dish("pork", false, 800, Dish.Type.MEAT),
-            new Dish("beef", false, 700, Dish.Type.MEAT),
-            new Dish("chicken", false, 400, Dish.Type.MEAT),
-            new Dish("french fries", true, 530, Dish.Type.OTHER),
-            new Dish("rice", true, 350, Dish.Type.OTHER),
-            new Dish("season fruit", true, 120, Dish.Type.OTHER),
-            new Dish("pizza", true, 550, Dish.Type.OTHER),
-            new Dish("prawns", false, 300, Dish.Type.FISH),
-            new Dish("salmon", false, 450, Dish.Type.FISH));
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
 //        new StreamingStuff().flatMap();
 //        new StreamingStuff().optional();
 //        new StreamingStuff().reduce();
 //        new StreamingStuff().reduce2();
 //        new StreamingStuff().digitStream();
-        new StreamingStuff().sharedNum();
+//        new StreamingStuff().sharedNum();
+        new StreamingStuff().createStream();
     }
 
 
